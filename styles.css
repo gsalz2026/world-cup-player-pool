@@ -466,9 +466,13 @@ select {
 }
 
 .utility-actions {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   padding-top: 0.35rem;
   border-top: 1px solid var(--line);
+}
+
+#resetDraftBtn {
+  min-width: 148px;
+  padding-inline: 0.72rem;
 }
 
 .tabs {
