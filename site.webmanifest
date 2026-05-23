@@ -1,6 +1,6 @@
 {
-  "name": "Lluvia de Goles",
-  "short_name": "Lluvia",
+  "name": "Tormenta de Goles",
+  "short_name": "Tormenta",
   "description": "World Cup player pool draft and scoring app.",
   "start_url": "/",
   "scope": "/",

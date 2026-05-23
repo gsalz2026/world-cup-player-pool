@@ -792,7 +792,7 @@ function renderRules() {
       <section class="rules-hero">
         <div>
           <p class="eyebrow">Official Pool Rules</p>
-          <h2>Lluvia de Goles</h2>
+          <h2>Tormenta de Goles</h2>
         </div>
         <p>Draft players, score points while their countries survive, and try to finish the World Cup at the top of the standings.</p>
       </section>
