@@ -71,7 +71,7 @@
           </div>
           <div class="action-group utility-actions">
             <button id="undoPickBtn">Undo</button>
-            <button id="resetDraftBtn" class="danger">Reset</button>
+            <button id="resetDraftBtn" class="danger">Reset Picks or Draft</button>
           </div>
         </div>
       </section>
@@ -83,6 +83,18 @@
       <section id="standings" class="tab-panel"></section>
       <section id="rules" class="tab-panel"></section>
     </main>
+
+    <dialog id="resetDraftDialog" class="reset-dialog">
+      <form method="dialog">
+        <h2>Reset Picks or Draft</h2>
+        <p>Choose whether to undo only the most recent pick or reset the entire draft board.</p>
+        <div class="dialog-actions">
+          <button id="resetLastPickBtn" type="button">Reset Last Pick</button>
+          <button id="resetEntireDraftBtn" type="button" class="danger">Reset Entire Draft</button>
+          <button type="submit">Cancel</button>
+        </div>
+      </form>
+    </dialog>
 
     <template id="emptyStateTemplate">
       <div class="empty-state">

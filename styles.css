@@ -141,6 +141,40 @@ button.draft-clicked {
   color: var(--red);
 }
 
+.reset-dialog {
+  width: min(440px, calc(100vw - 2rem));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0;
+  color: var(--ink);
+  box-shadow: 0 24px 64px rgba(24, 32, 38, 0.28);
+}
+
+.reset-dialog::backdrop {
+  background: rgba(10, 24, 17, 0.48);
+}
+
+.reset-dialog form {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1.1rem;
+}
+
+.reset-dialog h2,
+.reset-dialog p {
+  margin: 0;
+}
+
+.reset-dialog p {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.dialog-actions {
+  display: grid;
+  gap: 0.5rem;
+}
+
 .topbar {
   position: sticky;
   top: 0;

@@ -933,6 +933,28 @@ function animateDraftButton(button, playerId) {
   window.setTimeout(() => draftPlayer(playerId), 180);
 }
 
+function resetLastPick() {
+  if (!state.picks.length) return;
+  state.picks.pop();
+  render();
+}
+
+function resetEntireDraft() {
+  const currentLogin = state.loggedInUserId;
+  const currentUser = state.currentUserId;
+  state.picks = [];
+  state.queues = Object.fromEntries(state.participants.map((participant) => [participant.id, []]));
+  state.stats = {};
+  state.teamStatus = Object.fromEntries(TEAMS.map(([, team]) => [team, "Alive"]));
+  state.participantsLocked = false;
+  state.draftOrder = state.participants.map((participant) => participant.id);
+  state.draftOrderLocked = false;
+  state.scoringTeam = TEAMS[0][1];
+  state.loggedInUserId = currentLogin;
+  state.currentUserId = currentUser;
+  render();
+}
+
 function nameForParticipant(id) {
   return state.participants.find((participant) => participant.id === id)?.name || "Unknown";
 }
@@ -1045,18 +1067,19 @@ document.getElementById("saveParticipantsBtn").addEventListener("click", render)
 document.getElementById("lockParticipantsBtn").addEventListener("click", lockParticipants);
 document.getElementById("randomizeOrderBtn").addEventListener("click", randomizeDraftOrder);
 document.getElementById("lockOrderBtn").addEventListener("click", lockDraftOrder);
-document.getElementById("undoPickBtn").addEventListener("click", () => {
-  if (!state.picks.length) return;
-  state.picks.pop();
-  render();
-});
+document.getElementById("undoPickBtn").addEventListener("click", resetLastPick);
 document.getElementById("resetDraftBtn").addEventListener("click", () => {
   if (!isAdminUser()) return;
-  if (!confirm("Reset the draft picks, queues, scoring, and team statuses?")) return;
-  state = defaultState();
-  state.loggedInUserId = "p1";
-  state.currentUserId = "p1";
-  render();
+  document.getElementById("resetDraftDialog").showModal();
+});
+document.getElementById("resetLastPickBtn").addEventListener("click", () => {
+  document.getElementById("resetDraftDialog").close();
+  resetLastPick();
+});
+document.getElementById("resetEntireDraftBtn").addEventListener("click", () => {
+  if (!confirm("Reset the entire draft board, queues, scoring, and team statuses?")) return;
+  document.getElementById("resetDraftDialog").close();
+  resetEntireDraft();
 });
 document.addEventListener("click", (event) => {
   if (event.target.id === "updateRostersBtn" && isAdminUser()) updateOfficialRosters();
