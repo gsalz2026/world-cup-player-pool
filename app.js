@@ -50,6 +50,15 @@ const POSITION_PATTERN = ["GK", "GK", "GK", "DEF", "DEF", "DEF", "DEF", "DEF", "
 const STORAGE_KEY = "worldCupPlayerPool.v1";
 const OFFICIAL_ROSTER_UNLOCK_DATE = "2026-06-01";
 const OFFICIAL_ROSTER_SOURCE = "https://en.wikipedia.org/w/api.php?action=parse&page=2026_FIFA_World_Cup_squads&prop=text&format=json&origin=*";
+const LEAGUE_PARTICIPANT_NAMES = [
+  "Glenn Salzman",
+  "Teddy Salzman",
+  "Matt Jarvis",
+  "Oak Jarvis",
+  "Doyle Walton",
+  "Beck Walton",
+  "Scott Meyer"
+];
 const GAME_COLUMNS = [
   { id: "group1", label: "G1" },
   { id: "group2", label: "G2" },
@@ -112,7 +121,7 @@ function inferPosition(index, name) {
 }
 
 function defaultState() {
-  const participants = Array.from({ length: 6 }, (_, index) => ({ id: `p${index + 1}`, name: `Participant ${index + 1}` }));
+  const participants = LEAGUE_PARTICIPANT_NAMES.map((name, index) => ({ id: `p${index + 1}`, name }));
   return {
     participants,
     participantsLocked: false,
@@ -124,10 +133,12 @@ function defaultState() {
     teamStatus: Object.fromEntries(TEAMS.map(([, team]) => [team, "Alive"])),
     customRoster: null,
     rosterUpdatedAt: "",
+    loggedInUserId: null,
     activeTab: "draft",
     currentUserId: "p1",
     scoringTeam: TEAMS[0][1],
     queueSort: { key: "player", direction: "asc" },
+    viewMode: "desktop",
     filters: { search: "", team: "All", position: "All", availability: "Available", hideDrafted: true }
   };
 }
@@ -137,6 +148,10 @@ function loadState() {
     const defaults = defaultState();
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     const merged = { ...defaults, ...saved, filters: { ...defaults.filters, ...(saved?.filters || {}) } };
+    if (usesGeneratedParticipantNames(merged.participants)) {
+      merged.participants = LEAGUE_PARTICIPANT_NAMES.map((name, index) => ({ id: `p${index + 1}`, name }));
+      merged.queues = { ...Object.fromEntries(merged.participants.map((participant) => [participant.id, []])), ...(merged.queues || {}) };
+    }
     if (!merged.currentUserId && saved?.queueManager) merged.currentUserId = saved.queueManager;
     const participantIds = merged.participants.map((participant) => participant.id);
     merged.draftOrder = normalizeDraftOrder(merged.draftOrder, participantIds);
@@ -167,6 +182,10 @@ function draftParticipants() {
   const orderedIds = normalizeDraftOrder(state.draftOrder, state.participants.map((participant) => participant.id));
   state.draftOrder = orderedIds;
   return orderedIds.map((id) => byId.get(id)).filter(Boolean);
+}
+
+function usesGeneratedParticipantNames(participants) {
+  return Array.isArray(participants) && participants.every((participant) => /^Participant \d+$/.test(participant.name));
 }
 
 function slug(value) {
@@ -243,6 +262,8 @@ function isTeamAlive(team) {
 
 function render() {
   saveState();
+  renderViewMode();
+  renderLogin();
   renderPickStatus();
   renderUserSession();
   renderParticipantSetup();
@@ -254,6 +275,21 @@ function render() {
   renderStandings();
 }
 
+function renderViewMode() {
+  const mobile = state.viewMode === "mobile";
+  document.body.classList.toggle("mobile-view", mobile);
+  const toggle = document.getElementById("viewModeToggle");
+  if (toggle) toggle.checked = mobile;
+}
+
+function renderLogin() {
+  const loggedIn = Boolean(state.loggedInUserId);
+  document.body.classList.toggle("login-mode", !loggedIn);
+  document.getElementById("loginParticipant").innerHTML = state.participants.map((participant) => `
+    <option value="${participant.id}" ${participant.id === state.currentUserId ? "selected" : ""}>${escapeHtml(participant.name)}</option>
+  `).join("");
+}
+
 function renderPickStatus() {
   const info = currentPickInfo();
   const onDeck = info ? pickInfoForIndex(info.pickIndex + 1) : null;
@@ -263,14 +299,15 @@ function renderPickStatus() {
 }
 
 function renderUserSession() {
+  if (state.loggedInUserId) state.currentUserId = state.loggedInUserId;
   if (!state.participants.some((participant) => participant.id === state.currentUserId)) {
     state.currentUserId = state.participants[0]?.id || "p1";
   }
+  const participantName = nameForParticipant(state.currentUserId);
   document.getElementById("userSession").innerHTML = `
-    <label for="currentUser">Signed in as</label>
-    <select id="currentUser">
-      ${state.participants.map((participant) => `<option value="${participant.id}" ${participant.id === state.currentUserId ? "selected" : ""}>${escapeHtml(participant.name)}</option>`).join("")}
-    </select>
+    <span>Signed in as</span>
+    <strong>${escapeHtml(participantName)}</strong>
+    <button id="changeUserBtn" class="title-link">Change</button>
   `;
 }
 
@@ -823,6 +860,15 @@ document.addEventListener("click", (event) => {
     state.queues[state.currentUserId] = (state.queues[state.currentUserId] || []).filter((id) => id !== removeQueueButton.dataset.removeQueue);
     render();
   }
+  if (event.target.id === "changeUserBtn") {
+    state.loggedInUserId = null;
+    render();
+  }
+  if (event.target.id === "loginBtn") {
+    state.loggedInUserId = document.getElementById("loginParticipant").value;
+    state.currentUserId = state.loggedInUserId;
+    render();
+  }
 });
 
 document.addEventListener("input", (event) => {
@@ -853,7 +899,7 @@ document.addEventListener("change", (event) => {
   }
   if (event.target.id === "teamFilter") state.filters.team = event.target.value;
   if (event.target.id === "positionFilter") state.filters.position = event.target.value;
-  if (event.target.id === "currentUser") state.currentUserId = event.target.value;
+  if (event.target.id === "viewModeToggle") state.viewMode = event.target.checked ? "mobile" : "desktop";
   if (event.target.matches("[data-toggle-drafted]")) state.filters.hideDrafted = event.target.checked;
   if (event.target.id === "scoringTeam") state.scoringTeam = event.target.value;
   if (event.target.matches("[data-team-status]")) state.teamStatus[event.target.dataset.teamStatus] = event.target.value;

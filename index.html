@@ -7,6 +7,18 @@
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
+    <section id="loginPage" class="login-page" aria-label="Login">
+      <div class="login-panel">
+        <p class="eyebrow">World Cup Player Pool</p>
+        <h1>Lluvia de Goles</h1>
+        <div>
+          <label for="loginParticipant">Choose your name</label>
+          <select id="loginParticipant"></select>
+        </div>
+        <button id="loginBtn" class="primary">Enter Pool</button>
+      </div>
+    </section>
+
     <header class="topbar">
       <div class="topbar-main">
         <div>
@@ -19,6 +31,12 @@
           <span id="onDeckLabel">On deck: Loading...</span>
         </div>
         <div id="userSession"></div>
+        <label class="view-toggle" aria-label="View mode">
+          <span>Desktop</span>
+          <input id="viewModeToggle" type="checkbox">
+          <span class="view-track"><span class="view-thumb"></span></span>
+          <span>Mobile</span>
+        </label>
         <button id="updateRostersBtn" class="title-action">Update World Cup Rosters</button>
       </div>
       <nav class="tabs" aria-label="Pool sections">

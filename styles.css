@@ -23,6 +23,56 @@ body {
   background: #eef3ef;
 }
 
+.login-page {
+  display: none;
+  min-height: 100vh;
+  place-items: center;
+  padding: 2rem;
+  color: white;
+  background:
+    linear-gradient(rgba(7, 35, 24, 0.68), rgba(7, 35, 24, 0.8)),
+    url("https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=1800&q=80") center/cover;
+}
+
+body.login-mode {
+  overflow: hidden;
+}
+
+body.login-mode .login-page {
+  display: grid;
+}
+
+body.login-mode .topbar,
+body.login-mode main {
+  display: none;
+}
+
+.login-panel {
+  width: min(420px, 100%);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(10px);
+  padding: 1.4rem;
+  box-shadow: 0 22px 44px rgba(7, 35, 24, 0.24);
+}
+
+.login-panel h1 {
+  margin-bottom: 1.4rem;
+}
+
+.login-panel label {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.login-panel select {
+  margin-bottom: 0.9rem;
+}
+
+.login-panel button {
+  width: 100%;
+}
+
 button,
 input,
 select {
@@ -177,21 +227,38 @@ main {
   min-width: 190px;
 }
 
-#userSession label {
-  text-align: left;
+#userSession span,
+#userSession strong {
+  display: block;
+}
+
+#userSession span {
   color: rgba(255, 255, 255, 0.78);
   font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
-#userSession select {
-  min-height: 38px;
-  border-color: rgba(255, 255, 255, 0.34);
-  background: rgba(255, 255, 255, 0.14);
+#userSession strong {
+  margin: 0.15rem 0 0.3rem;
   color: white;
+  font-size: 0.98rem;
 }
 
-#userSession select option {
-  color: var(--ink);
+.title-link {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.86);
+  padding: 0;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-decoration: underline;
+}
+
+.title-link:hover {
+  transform: none;
+  color: white;
 }
 
 .title-action {
@@ -208,6 +275,50 @@ main {
   border-color: white;
   background: white;
   color: var(--ink);
+}
+
+.view-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.view-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.view-track {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.view-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 160ms ease;
+}
+
+.view-toggle input:checked + .view-track .view-thumb {
+  transform: translateX(20px);
 }
 
 label {
@@ -351,6 +462,95 @@ body.draft-mode #draft.active {
   height: calc(100vh - 302px);
   overflow: auto;
   padding-bottom: 1rem;
+}
+
+body.mobile-view {
+  overflow: auto;
+}
+
+body.mobile-view .topbar {
+  position: static;
+  gap: 0.85rem;
+  padding: 1rem;
+}
+
+body.mobile-view .topbar-main {
+  align-items: stretch;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+body.mobile-view h1 {
+  font-size: 2.25rem;
+}
+
+body.mobile-view .clock-panel span,
+body.mobile-view .clock-panel strong {
+  text-align: left;
+}
+
+body.mobile-view .tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 0.15rem;
+}
+
+body.mobile-view .tab {
+  flex: 0 0 auto;
+}
+
+body.mobile-view main {
+  width: min(100% - 0.75rem, 720px);
+  margin-top: 0.75rem;
+}
+
+body.mobile-view .setup-panel {
+  position: static;
+  grid-template-columns: 1fr;
+}
+
+body.mobile-view .participant-strip {
+  grid-template-columns: 1fr;
+}
+
+body.mobile-view .participant-inputs {
+  grid-auto-flow: row;
+  grid-auto-columns: unset;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body.mobile-view .setup-actions,
+body.mobile-view .workflow-actions,
+body.mobile-view .utility-actions,
+body.mobile-view .toolbar,
+body.mobile-view .queue-workspace,
+body.mobile-view .rules-strip,
+body.mobile-view .scoring-controls {
+  grid-template-columns: 1fr;
+}
+
+body.mobile-view #draft.active {
+  height: auto;
+  overflow: visible;
+}
+
+body.mobile-view .draft-grid,
+body.mobile-view .table-shell,
+body.mobile-view .scoring-table-wrap,
+body.mobile-view .squad-table-wrap {
+  overflow-x: auto;
+}
+
+body.mobile-view .queue-box {
+  position: static;
+}
+
+body.mobile-view .team-summary-grid {
+  grid-template-columns: 1fr;
+}
+
+body.mobile-view .standing-row {
+  grid-template-columns: 36px 1fr 76px;
 }
 
 .tab-panel {
