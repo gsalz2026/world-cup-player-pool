@@ -312,9 +312,6 @@ function renderLogin() {
   const loggedIn = Boolean(state.loggedInUserId);
   document.body.classList.toggle("login-mode", !loggedIn);
   const loginParticipants = state.participants.filter((participant) => participant.name.trim());
-  document.getElementById("loginParticipant").innerHTML = loginParticipants.map((participant) => `
-    <option value="${participant.id}" ${participant.id === state.currentUserId ? "selected" : ""}>${escapeHtml(participant.name)}</option>
-  `).join("");
   document.getElementById("loginParticipantButtons").innerHTML = loginParticipants.map((participant) => `
     <button type="button" data-login-participant="${participant.id}">${escapeHtml(participant.name)}</button>
   `).join("");
@@ -992,11 +989,6 @@ document.addEventListener("click", (event) => {
   }
   if (event.target.id === "changeUserBtn") {
     state.loggedInUserId = null;
-    render();
-  }
-  if (event.target.id === "loginBtn") {
-    state.loggedInUserId = document.getElementById("loginParticipant").value;
-    state.currentUserId = state.loggedInUserId;
     render();
   }
   const loginParticipantButton = event.target.closest("[data-login-participant]");
