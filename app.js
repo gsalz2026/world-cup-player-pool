@@ -311,7 +311,7 @@ function renderViewMode() {
 function renderLogin() {
   const loggedIn = Boolean(state.loggedInUserId);
   document.body.classList.toggle("login-mode", !loggedIn);
-  const loginParticipants = state.participants.filter((participant) => LEAGUE_PARTICIPANT_NAMES.includes(participant.name));
+  const loginParticipants = state.participants.filter((participant) => participant.name.trim());
   document.getElementById("loginParticipant").innerHTML = loginParticipants.map((participant) => `
     <option value="${participant.id}" ${participant.id === state.currentUserId ? "selected" : ""}>${escapeHtml(participant.name)}</option>
   `).join("");
@@ -343,7 +343,10 @@ function renderUserSession() {
 
 function renderParticipantSetup() {
   const countSelect = document.getElementById("participantCount");
-  countSelect.innerHTML = Array.from({ length: 10 }, (_, index) => `<option value="${index + 1}">${index + 1}</option>`).join("");
+  countSelect.innerHTML = Array.from({ length: 4 }, (_, index) => {
+    const count = LEAGUE_PARTICIPANT_NAMES.length + index;
+    return `<option value="${count}">${count}</option>`;
+  }).join("");
   countSelect.value = state.participants.length;
   countSelect.disabled = state.participantsLocked || state.picks.length > 0;
   document.getElementById("lockParticipantsBtn").disabled = state.participantsLocked || state.picks.length > 0;
