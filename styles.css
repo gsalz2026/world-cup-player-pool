@@ -277,6 +277,10 @@ main {
   color: var(--ink);
 }
 
+body:not(.admin-user) #updateRostersBtn {
+  display: none;
+}
+
 .view-toggle {
   display: flex;
   align-items: center;

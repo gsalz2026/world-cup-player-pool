@@ -260,8 +260,13 @@ function isTeamAlive(team) {
   return state.teamStatus[team] === "Alive";
 }
 
+function isAdminUser() {
+  return nameForParticipant(state.loggedInUserId || state.currentUserId) === "Glenn Salzman";
+}
+
 function render() {
   saveState();
+  document.body.classList.toggle("admin-user", isAdminUser());
   renderViewMode();
   renderLogin();
   renderPickStatus();
@@ -320,6 +325,7 @@ function renderParticipantSetup() {
   document.getElementById("randomizeOrderBtn").disabled = !state.participantsLocked || state.draftOrderLocked || state.picks.length > 0;
   document.getElementById("lockOrderBtn").disabled = !state.participantsLocked || state.draftOrderLocked || state.picks.length > 0;
   document.getElementById("saveParticipantsBtn").disabled = state.participantsLocked || state.picks.length > 0;
+  document.getElementById("resetDraftBtn").hidden = !isAdminUser();
 
   document.getElementById("participantInputs").innerHTML = state.participants.map((participant, index) => `
     <div>
@@ -920,12 +926,15 @@ document.getElementById("undoPickBtn").addEventListener("click", () => {
   render();
 });
 document.getElementById("resetDraftBtn").addEventListener("click", () => {
+  if (!isAdminUser()) return;
   if (!confirm("Reset the draft picks, queues, scoring, and team statuses?")) return;
   state = defaultState();
+  state.loggedInUserId = "p1";
+  state.currentUserId = "p1";
   render();
 });
 document.addEventListener("click", (event) => {
-  if (event.target.id === "updateRostersBtn") updateOfficialRosters();
+  if (event.target.id === "updateRostersBtn" && isAdminUser()) updateOfficialRosters();
 });
 
 initializeRoster().then(render);
