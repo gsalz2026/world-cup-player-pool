@@ -278,6 +278,7 @@ function render() {
   renderTeams();
   renderSquads();
   renderStandings();
+  renderRules();
 }
 
 function renderViewMode() {
@@ -757,6 +758,102 @@ function renderSquads() {
           ` : `<div class="empty-state"><strong>No picks yet.</strong><span>This squad will fill in during the draft.</span></div>`}
         </article>`;
       }).join("")}
+    </div>
+  `;
+}
+
+function renderRules() {
+  document.getElementById("rules").innerHTML = `
+    <div class="rules-page">
+      <section class="rules-hero">
+        <div>
+          <p class="eyebrow">Official Pool Rules</p>
+          <h2>Lluvia de Goles</h2>
+        </div>
+        <p>Draft players, score points while their countries survive, and try to finish the World Cup at the top of the standings.</p>
+      </section>
+
+      <section class="rules-section">
+        <h3>Draft Setup</h3>
+        <ul class="rules-list">
+          <li>The pool can include up to 10 participants.</li>
+          <li>Each participant drafts 10 players.</li>
+          <li>Before drafting begins, the participants are locked, the draft order is randomized, and then the draft order is locked.</li>
+          <li>The draft is a snake draft, so the order reverses every round.</li>
+        </ul>
+      </section>
+
+      <section class="rules-section">
+        <h3>Drafting Players</h3>
+        <ul class="rules-list">
+          <li>Only available players can be drafted.</li>
+          <li>Once a player is drafted, that player belongs to the participant who made the pick.</li>
+          <li>The Draft Queue can show drafted players or hide them, depending on the Hide Drafted toggle.</li>
+          <li>Each signed-in participant has their own private queue. Other participants cannot see it.</li>
+          <li>If someone else drafts a player in your queue, that player is removed from your queue.</li>
+        </ul>
+      </section>
+
+      <section class="rules-section">
+        <h3>Scoring</h3>
+        <div class="rules-table-wrap">
+          <table class="rules-table">
+            <thead>
+              <tr>
+                <th>Position</th>
+                <th>Goal</th>
+                <th>Assist</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Defender</td>
+                <td>8 points</td>
+                <td>4 points</td>
+              </tr>
+              <tr>
+                <td>Midfielder</td>
+                <td>5 points</td>
+                <td>3 points</td>
+              </tr>
+              <tr>
+                <td>Forward</td>
+                <td>4 points</td>
+                <td>3 points</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="rules-note">Goals and assists are entered by game: Group 1, Group 2, Group 3, Round of 32, Round of 16, Quarterfinal, Semifinal, Final, and Third Place.</p>
+      </section>
+
+      <section class="rules-section">
+        <h3>Eliminations</h3>
+        <ul class="rules-list">
+          <li>When a player's country is eliminated from the World Cup, that player is eliminated from the pool.</li>
+          <li>Eliminated players keep all points they already scored.</li>
+          <li>Eliminated players cannot earn additional points after their country is out.</li>
+          <li>Country status is controlled on the Teams & Scoring tab by changing a team from Alive to Eliminated.</li>
+        </ul>
+      </section>
+
+      <section class="rules-section">
+        <h3>Standings</h3>
+        <ul class="rules-list">
+          <li>Standings are ranked by total points.</li>
+          <li>Total points include points from both active and eliminated players.</li>
+          <li>The standings also show how many drafted players each participant still has alive.</li>
+        </ul>
+      </section>
+
+      <section class="rules-section">
+        <h3>Commissioner Controls</h3>
+        <ul class="rules-list">
+          <li>Glenn Salzman is the commissioner/admin user.</li>
+          <li>Only the commissioner can reset the draft.</li>
+          <li>Only the commissioner can use Update World Cup Rosters after official rosters are available.</li>
+        </ul>
+      </section>
     </div>
   `;
 }

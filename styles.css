@@ -1138,6 +1138,83 @@ th {
   margin-top: 0.15rem;
 }
 
+.rules-page {
+  display: grid;
+  gap: 1rem;
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.rules-hero,
+.rules-section {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  box-shadow: var(--shadow);
+}
+
+.rules-hero {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.85fr) 1fr;
+  gap: 1rem;
+  align-items: end;
+  padding: 1.2rem;
+}
+
+.rules-hero h2 {
+  margin: 0;
+  font-size: clamp(1.8rem, 3vw, 2.7rem);
+}
+
+.rules-hero p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.rules-section {
+  padding: 1rem 1.1rem;
+}
+
+.rules-section h3 {
+  margin: 0 0 0.7rem;
+  font-size: 1.05rem;
+}
+
+.rules-list {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding-left: 1.1rem;
+  color: #344149;
+  line-height: 1.45;
+}
+
+.rules-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.rules-table {
+  min-width: 460px;
+}
+
+.rules-table th,
+.rules-table td {
+  padding: 0.7rem 0.8rem;
+}
+
+.rules-table td:first-child {
+  font-weight: 800;
+}
+
+.rules-note {
+  margin: 0.8rem 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .standing-row {
   display: grid;
   grid-template-columns: 42px 1fr 96px;
@@ -1214,5 +1291,9 @@ th {
 
   .standing-row {
     grid-template-columns: 36px 1fr;
+  }
+
+  .rules-hero {
+    grid-template-columns: 1fr;
   }
 }
