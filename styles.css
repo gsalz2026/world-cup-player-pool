@@ -69,6 +69,23 @@ body.login-mode main {
   margin-bottom: 0.9rem;
 }
 
+.login-participant-buttons {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.2rem 0 0.9rem;
+}
+
+.login-participant-buttons button {
+  justify-content: flex-start;
+  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.16);
+  color: white;
+}
+
+.login-participant-buttons button:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
 .login-panel button {
   width: 100%;
 }

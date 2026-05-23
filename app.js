@@ -152,9 +152,12 @@ function loadState() {
       merged.participants = LEAGUE_PARTICIPANT_NAMES.map((name, index) => ({ id: `p${index + 1}`, name }));
       merged.queues = { ...Object.fromEntries(merged.participants.map((participant) => [participant.id, []])), ...(merged.queues || {}) };
     }
+    ensureLeagueParticipants(merged);
     if (!merged.currentUserId && saved?.queueManager) merged.currentUserId = saved.queueManager;
     const participantIds = merged.participants.map((participant) => participant.id);
     merged.draftOrder = normalizeDraftOrder(merged.draftOrder, participantIds);
+    if (merged.loggedInUserId && !participantIds.includes(merged.loggedInUserId)) merged.loggedInUserId = null;
+    if (!participantIds.includes(merged.currentUserId)) merged.currentUserId = merged.loggedInUserId || participantIds[0] || "p1";
     if (!saved?.draftOrder && merged.picks.length) {
       merged.participantsLocked = true;
       merged.draftOrderLocked = true;
@@ -167,6 +170,23 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function ensureLeagueParticipants(targetState) {
+  const existing = Array.isArray(targetState.participants) ? targetState.participants : [];
+  const extras = existing.filter((participant) => {
+    const index = Number(String(participant.id || "").replace("p", "")) - 1;
+    return index >= LEAGUE_PARTICIPANT_NAMES.length;
+  });
+  targetState.participants = LEAGUE_PARTICIPANT_NAMES.map((name, index) => {
+    const id = `p${index + 1}`;
+    const existingParticipant = existing.find((participant) => participant.id === id);
+    return { ...(existingParticipant || {}), id, name };
+  }).concat(extras);
+  targetState.queues = {
+    ...Object.fromEntries(targetState.participants.map((participant) => [participant.id, []])),
+    ...(targetState.queues || {})
+  };
 }
 
 function normalizeDraftOrder(order, participantIds) {
@@ -291,8 +311,12 @@ function renderViewMode() {
 function renderLogin() {
   const loggedIn = Boolean(state.loggedInUserId);
   document.body.classList.toggle("login-mode", !loggedIn);
-  document.getElementById("loginParticipant").innerHTML = state.participants.map((participant) => `
+  const loginParticipants = state.participants.filter((participant) => LEAGUE_PARTICIPANT_NAMES.includes(participant.name));
+  document.getElementById("loginParticipant").innerHTML = loginParticipants.map((participant) => `
     <option value="${participant.id}" ${participant.id === state.currentUserId ? "selected" : ""}>${escapeHtml(participant.name)}</option>
+  `).join("");
+  document.getElementById("loginParticipantButtons").innerHTML = loginParticipants.map((participant) => `
+    <button type="button" data-login-participant="${participant.id}">${escapeHtml(participant.name)}</button>
   `).join("");
 }
 
@@ -972,6 +996,12 @@ document.addEventListener("click", (event) => {
     state.currentUserId = state.loggedInUserId;
     render();
   }
+  const loginParticipantButton = event.target.closest("[data-login-participant]");
+  if (loginParticipantButton) {
+    state.loggedInUserId = loginParticipantButton.dataset.loginParticipant;
+    state.currentUserId = state.loggedInUserId;
+    render();
+  }
 });
 
 document.addEventListener("input", (event) => {
@@ -991,7 +1021,10 @@ document.addEventListener("change", (event) => {
   if (event.target.id === "participantCount") {
     const count = Number(event.target.value);
     const existing = state.participants;
-    state.participants = Array.from({ length: count }, (_, index) => existing[index] || { id: `p${index + 1}`, name: `Participant ${index + 1}` });
+    const minimumCount = LEAGUE_PARTICIPANT_NAMES.length;
+    const nextCount = Math.max(count, minimumCount);
+    state.participants = Array.from({ length: nextCount }, (_, index) => existing[index] || { id: `p${index + 1}`, name: LEAGUE_PARTICIPANT_NAMES[index] || `Participant ${index + 1}` });
+    ensureLeagueParticipants(state);
     state.queues = Object.fromEntries(state.participants.map((participant) => [participant.id, state.queues[participant.id] || []]));
     state.currentUserId = state.participants[0].id;
     state.participantsLocked = false;
