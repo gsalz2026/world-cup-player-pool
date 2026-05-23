@@ -1067,7 +1067,6 @@ document.getElementById("saveParticipantsBtn").addEventListener("click", render)
 document.getElementById("lockParticipantsBtn").addEventListener("click", lockParticipants);
 document.getElementById("randomizeOrderBtn").addEventListener("click", randomizeDraftOrder);
 document.getElementById("lockOrderBtn").addEventListener("click", lockDraftOrder);
-document.getElementById("undoPickBtn").addEventListener("click", resetLastPick);
 document.getElementById("resetDraftBtn").addEventListener("click", () => {
   if (!isAdminUser()) return;
   document.getElementById("resetDraftDialog").showModal();
