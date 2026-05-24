@@ -339,11 +339,13 @@ function renderUserSession() {
 }
 
 function renderParticipantSetup() {
-  const countLocked = state.participantsLocked || state.picks.length > 0;
-  document.getElementById("participantCountButtons").innerHTML = Array.from({ length: 4 }, (_, index) => {
+  const countSelect = document.getElementById("participantCount");
+  countSelect.innerHTML = Array.from({ length: 4 }, (_, index) => {
     const count = LEAGUE_PARTICIPANT_NAMES.length + index;
-    return `<button type="button" class="${state.participants.length === count ? "active" : ""}" data-participant-count="${count}" ${countLocked ? "disabled" : ""}>${count}</button>`;
+    return `<option value="${count}">${count}</option>`;
   }).join("");
+  countSelect.value = state.participants.length;
+  countSelect.disabled = state.participantsLocked || state.picks.length > 0;
   document.getElementById("lockParticipantsBtn").disabled = state.participantsLocked || state.picks.length > 0;
   document.getElementById("randomizeOrderBtn").disabled = !state.participantsLocked || state.draftOrderLocked || state.picks.length > 0;
   document.getElementById("lockOrderBtn").disabled = !state.participantsLocked || state.draftOrderLocked || state.picks.length > 0;
@@ -1034,10 +1036,6 @@ document.addEventListener("click", (event) => {
     state.currentUserId = state.loggedInUserId;
     render();
   }
-  const participantCountButton = event.target.closest("[data-participant-count]");
-  if (participantCountButton) {
-    setParticipantCount(Number(participantCountButton.dataset.participantCount));
-  }
 });
 
 document.addEventListener("input", (event) => {
@@ -1054,6 +1052,7 @@ document.addEventListener("input", (event) => {
 });
 
 document.addEventListener("change", (event) => {
+  if (event.target.id === "participantCount") setParticipantCount(Number(event.target.value));
   if (event.target.id === "teamFilter") state.filters.team = event.target.value;
   if (event.target.id === "positionFilter") state.filters.position = event.target.value;
   if (event.target.id === "viewModeToggle") state.viewMode = event.target.checked ? "mobile" : "desktop";

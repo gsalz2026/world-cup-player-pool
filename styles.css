@@ -381,16 +381,6 @@ label {
   margin-bottom: 0.35rem;
 }
 
-.count-label {
-  display: block;
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 0.35rem;
-}
-
 .setup-kicker {
   display: block;
   color: var(--grass-dark);
@@ -405,23 +395,6 @@ label {
   display: grid;
   align-content: end;
   min-width: 104px;
-}
-
-.count-buttons {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.3rem;
-}
-
-.count-buttons button {
-  min-height: 38px;
-  padding: 0.35rem 0.45rem;
-}
-
-.count-buttons button.active {
-  background: var(--grass);
-  border-color: var(--grass);
-  color: white;
 }
 
 input,
