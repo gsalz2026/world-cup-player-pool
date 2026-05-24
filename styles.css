@@ -209,9 +209,10 @@ button.draft-clicked {
 h1 {
   max-width: 850px;
   margin: 0;
-  font-size: clamp(2rem, 4vw, 3.7rem);
-  line-height: 0.98;
+  font-size: clamp(1.75rem, 3vw, 2.75rem);
+  line-height: 1;
   letter-spacing: 0;
+  white-space: nowrap;
 }
 
 main {
