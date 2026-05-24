@@ -11,7 +11,7 @@
     <link rel="manifest" href="/site.webmanifest">
     <link rel="apple-touch-icon" href="/icons/icon-180.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=20260524">
+    <link rel="stylesheet" href="styles.css?v=20260524-draftfix">
   </head>
   <body>
     <section id="loginPage" class="login-page" aria-label="Login">
@@ -57,8 +57,8 @@
         <div class="participant-strip">
           <div class="setup-count">
             <span class="setup-kicker">Draft Setup</span>
-            <label for="participantCount">Participants</label>
-            <select id="participantCount"></select>
+            <span class="count-label">Participants</span>
+            <div id="participantCountButtons" class="count-buttons" aria-label="Participants"></div>
           </div>
           <div id="participantInputs" class="participant-inputs"></div>
         </div>
@@ -102,6 +102,6 @@
       </div>
     </template>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=20260524-draftfix"></script>
   </body>
 </html>

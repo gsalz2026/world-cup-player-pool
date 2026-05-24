@@ -339,13 +339,11 @@ function renderUserSession() {
 }
 
 function renderParticipantSetup() {
-  const countSelect = document.getElementById("participantCount");
-  countSelect.innerHTML = Array.from({ length: 4 }, (_, index) => {
+  const countLocked = state.participantsLocked || state.picks.length > 0;
+  document.getElementById("participantCountButtons").innerHTML = Array.from({ length: 4 }, (_, index) => {
     const count = LEAGUE_PARTICIPANT_NAMES.length + index;
-    return `<option value="${count}">${count}</option>`;
+    return `<button type="button" class="${state.participants.length === count ? "active" : ""}" data-participant-count="${count}" ${countLocked ? "disabled" : ""}>${count}</button>`;
   }).join("");
-  countSelect.value = state.participants.length;
-  countSelect.disabled = state.participantsLocked || state.picks.length > 0;
   document.getElementById("lockParticipantsBtn").disabled = state.participantsLocked || state.picks.length > 0;
   document.getElementById("randomizeOrderBtn").disabled = !state.participantsLocked || state.draftOrderLocked || state.picks.length > 0;
   document.getElementById("lockOrderBtn").disabled = !state.participantsLocked || state.draftOrderLocked || state.picks.length > 0;
@@ -358,6 +356,22 @@ function renderParticipantSetup() {
       <input id="participant-${participant.id}" data-participant-name="${participant.id}" value="${escapeHtml(participant.name)}" ${state.participantsLocked || state.picks.length > 0 ? "disabled" : ""}>
     </div>
   `).join("");
+}
+
+function setParticipantCount(count) {
+  if (state.participantsLocked || state.picks.length > 0) return;
+  const existing = state.participants;
+  const minimumCount = LEAGUE_PARTICIPANT_NAMES.length;
+  const nextCount = Math.max(count, minimumCount);
+  state.participants = Array.from({ length: nextCount }, (_, index) => existing[index] || { id: `p${index + 1}`, name: LEAGUE_PARTICIPANT_NAMES[index] || `Participant ${index + 1}` });
+  ensureLeagueParticipants(state);
+  state.queues = Object.fromEntries(state.participants.map((participant) => [participant.id, state.queues[participant.id] || []]));
+  state.currentUserId = state.participants[0].id;
+  state.participantsLocked = false;
+  state.draftOrder = state.participants.map((participant) => participant.id);
+  state.draftOrderLocked = false;
+  state.picks = [];
+  render();
 }
 
 function renderTabs() {
@@ -377,6 +391,7 @@ function renderDraftBoard() {
     <div><span class="badge ${state.draftOrder?.length ? "alive" : ""}">2. Draft order ${state.participantsLocked ? "ready" : "pending"}</span></div>
     <div><span class="badge ${state.draftOrderLocked ? "alive" : ""}">3. ${state.draftOrderLocked ? "Draft order locked" : "Lock draft order"}</span></div>
   </div>`;
+  html += `<div class="draft-scroll-hint">Scroll sideways to see every participant.</div>`;
   html += `<div class="draft-grid">`;
   html += `<div class="draft-row" style="grid-template-columns: 72px repeat(${participants.length}, minmax(150px, 1fr));">`;
   html += `<div class="draft-cell header">Round</div>${participants.map((participant) => `<div class="draft-cell header">${escapeHtml(participant.name)}</div>`).join("")}</div>`;
@@ -1019,6 +1034,10 @@ document.addEventListener("click", (event) => {
     state.currentUserId = state.loggedInUserId;
     render();
   }
+  const participantCountButton = event.target.closest("[data-participant-count]");
+  if (participantCountButton) {
+    setParticipantCount(Number(participantCountButton.dataset.participantCount));
+  }
 });
 
 document.addEventListener("input", (event) => {
@@ -1035,21 +1054,6 @@ document.addEventListener("input", (event) => {
 });
 
 document.addEventListener("change", (event) => {
-  if (event.target.id === "participantCount") {
-    const count = Number(event.target.value);
-    const existing = state.participants;
-    const minimumCount = LEAGUE_PARTICIPANT_NAMES.length;
-    const nextCount = Math.max(count, minimumCount);
-    state.participants = Array.from({ length: nextCount }, (_, index) => existing[index] || { id: `p${index + 1}`, name: LEAGUE_PARTICIPANT_NAMES[index] || `Participant ${index + 1}` });
-    ensureLeagueParticipants(state);
-    state.queues = Object.fromEntries(state.participants.map((participant) => [participant.id, state.queues[participant.id] || []]));
-    state.currentUserId = state.participants[0].id;
-    state.participantsLocked = false;
-    state.draftOrder = state.participants.map((participant) => participant.id);
-    state.draftOrderLocked = false;
-    state.picks = [];
-    render();
-  }
   if (event.target.id === "teamFilter") state.filters.team = event.target.value;
   if (event.target.id === "positionFilter") state.filters.position = event.target.value;
   if (event.target.id === "viewModeToggle") state.viewMode = event.target.checked ? "mobile" : "desktop";
