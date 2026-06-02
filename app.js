@@ -586,16 +586,17 @@ function parseOfficialRosterHtml(html) {
     const team = canonicalTeamName(cleanText(heading.textContent));
     if (!teamGroups[team.toLowerCase()]) return;
     const sectionNodes = [];
-    let node = heading.nextElementSibling;
-    while (node && !["H2", "H3"].includes(node.tagName)) {
+    const headingBlock = heading.parentElement?.classList.contains("mw-heading") ? heading.parentElement : heading;
+    let node = headingBlock.nextElementSibling;
+    while (node && !node.querySelector?.("h2, h3") && !["H2", "H3"].includes(node.tagName)) {
       sectionNodes.push(node);
       node = node.nextElementSibling;
     }
     sectionNodes.flatMap((section) => [...section.querySelectorAll("tr")]).forEach((row) => {
       const cells = [...row.querySelectorAll("td, th")].map((cell) => cleanText(cell.textContent));
-      const positionIndex = cells.findIndex((cell) => ["GK", "DF", "MF", "FW", "DEF", "MID", "FWD"].includes(cell));
+      const positionIndex = cells.findIndex((cell) => rosterPositionFromCell(cell));
       if (positionIndex === -1) return;
-      const position = normalizePosition(cells[positionIndex]);
+      const position = normalizePosition(rosterPositionFromCell(cells[positionIndex]));
       const name = cells.slice(positionIndex + 1).find((cell) => cell && !/^\d+$/.test(cell) && !["GK", "DF", "MF", "FW", "DEF", "MID", "FWD"].includes(cell));
       if (!name) return;
       const id = slug(`${team}-${name}`);
@@ -613,6 +614,10 @@ function parseOfficialRosterHtml(html) {
   });
 
   return players;
+}
+
+function rosterPositionFromCell(value) {
+  return String(value || "").match(/(GK|DF|MF|FW|DEF|MID|FWD)/)?.[1] || "";
 }
 
 function canonicalTeamName(team) {
