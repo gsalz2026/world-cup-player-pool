@@ -50,6 +50,18 @@ const POSITION_PATTERN = ["GK", "GK", "GK", "DEF", "DEF", "DEF", "DEF", "DEF", "
 const STORAGE_KEY = "worldCupPlayerPool.v1";
 const OFFICIAL_ROSTER_UNLOCK_DATE = "2026-06-01";
 const OFFICIAL_ROSTER_SOURCE = "https://en.wikipedia.org/w/api.php?action=parse&page=2026_FIFA_World_Cup_squads&prop=text&format=json&origin=*";
+const TEAM_NAME_ALIASES = {
+  "bosnia and herzegovina": "Bosnia",
+  "côte d'ivoire": "Ivory Coast",
+  "cote d'ivoire": "Ivory Coast",
+  "curacao": "Curacao",
+  "curaçao": "Curacao",
+  "czech republic": "Czechia",
+  "turkey": "Turkiye",
+  "türkiye": "Turkiye",
+  "united states": "USA",
+  "united states of america": "USA"
+};
 const LEAGUE_PARTICIPANT_NAMES = [
   "Glenn Salzman",
   "Teddy Salzman",
@@ -291,6 +303,7 @@ function render() {
   renderLogin();
   renderPickStatus();
   renderUserSession();
+  renderRosterUpdateStatus();
   renderParticipantSetup();
   renderTabs();
   renderDraftBoard();
@@ -336,6 +349,14 @@ function renderUserSession() {
     <strong>${escapeHtml(participantName)}</strong>
     <button id="changeUserBtn" class="title-link">Change</button>
   `;
+}
+
+function renderRosterUpdateStatus() {
+  const status = document.getElementById("rosterUpdateStatus");
+  if (!status) return;
+  const message = rosterUpdateMessage || (state.rosterUpdatedAt ? `Rosters updated ${new Date(state.rosterUpdatedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : "");
+  status.textContent = message;
+  status.hidden = !message;
 }
 
 function renderParticipantSetup() {
@@ -525,12 +546,21 @@ async function updateOfficialRosters() {
   }
 
   rosterUpdateMessage = "Checking official roster source...";
-  renderQueue();
+  render();
 
   try {
-    const response = await fetch(OFFICIAL_ROSTER_SOURCE, { cache: "no-store" });
+    const response = await fetch(OFFICIAL_ROSTER_SOURCE, {
+      cache: "no-store",
+      headers: { Accept: "application/json" }
+    });
     if (!response.ok) throw new Error(`Roster source returned ${response.status}`);
-    const payload = await response.json();
+    const responseText = await response.text();
+    let payload;
+    try {
+      payload = JSON.parse(responseText);
+    } catch (error) {
+      throw new Error("Roster source did not return JSON.");
+    }
     const html = payload?.parse?.text?.["*"];
     const players = parseOfficialRosterHtml(html);
     if (!players.length) throw new Error("No players were found in the roster tables.");
@@ -550,9 +580,10 @@ function parseOfficialRosterHtml(html) {
   const doc = new DOMParser().parseFromString(html, "text/html");
   const players = [];
   const teamGroups = Object.fromEntries(TEAMS.map(([group, team]) => [team.toLowerCase(), group]));
+  const seenPlayers = new Set();
 
   doc.querySelectorAll("h2, h3").forEach((heading) => {
-    const team = cleanText(heading.textContent);
+    const team = canonicalTeamName(cleanText(heading.textContent));
     if (!teamGroups[team.toLowerCase()]) return;
     const sectionNodes = [];
     let node = heading.nextElementSibling;
@@ -567,8 +598,11 @@ function parseOfficialRosterHtml(html) {
       const position = normalizePosition(cells[positionIndex]);
       const name = cells.slice(positionIndex + 1).find((cell) => cell && !/^\d+$/.test(cell) && !["GK", "DF", "MF", "FW", "DEF", "MID", "FWD"].includes(cell));
       if (!name) return;
+      const id = slug(`${team}-${name}`);
+      if (seenPlayers.has(id)) return;
+      seenPlayers.add(id);
       players.push({
-        id: slug(`${team}-${name}`),
+        id,
         name,
         team,
         group: teamGroups[team.toLowerCase()],
@@ -579,6 +613,11 @@ function parseOfficialRosterHtml(html) {
   });
 
   return players;
+}
+
+function canonicalTeamName(team) {
+  const key = cleanText(team).toLowerCase();
+  return TEAM_NAME_ALIASES[key] || team;
 }
 
 function normalizePosition(position) {
