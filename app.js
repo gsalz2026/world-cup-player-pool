@@ -84,6 +84,7 @@ const GAME_COLUMNS = [
 
 let roster = [];
 let rosterUpdateMessage = "";
+let searchRenderTimer = null;
 let state = loadState();
 
 function generateRoster() {
@@ -438,7 +439,7 @@ function renderDraftBoard() {
   panel.innerHTML = html;
 }
 
-function renderQueue() {
+function renderQueue(options = {}) {
   const panel = document.getElementById("queue");
   if (state.filters.position === "GK") state.filters.position = "All";
   const teams = ["All", ...TEAMS.map(([, team]) => team).sort((a, b) => a.localeCompare(b))];
@@ -522,6 +523,13 @@ function renderQueue() {
       </aside>
     </div>
   `;
+  if (options.restoreSearchFocus) {
+    const search = document.getElementById("searchPlayers");
+    if (search) {
+      search.focus();
+      search.setSelectionRange(search.value.length, search.value.length);
+    }
+  }
 }
 
 function filteredPlayers() {
@@ -1096,8 +1104,12 @@ document.addEventListener("input", (event) => {
   }
   if (event.target.id === "searchPlayers") {
     state.filters.search = event.target.value;
-    renderQueue();
     saveState();
+    window.clearTimeout(searchRenderTimer);
+    searchRenderTimer = window.setTimeout(() => {
+      renderQueue({ restoreSearchFocus: true });
+      saveState();
+    }, 180);
   }
 });
 
