@@ -440,16 +440,17 @@ function renderDraftBoard() {
 
 function renderQueue() {
   const panel = document.getElementById("queue");
+  if (state.filters.position === "GK") state.filters.position = "All";
   const teams = ["All", ...TEAMS.map(([, team]) => team).sort((a, b) => a.localeCompare(b))];
   const filtered = filteredPlayers();
   const drafted = draftedMap();
   const current = currentPickInfo();
   const currentUserId = state.currentUserId;
-  const availablePlayerIds = new Set(roster.filter((player) => !drafted.has(player.id) && isTeamAlive(player.team)).map((player) => player.id));
+  const availablePlayerIds = new Set(roster.filter((player) => isDraftEligible(player) && !drafted.has(player.id) && isTeamAlive(player.team)).map((player) => player.id));
   const queue = new Set((state.queues[currentUserId] || []).filter((id) => availablePlayerIds.has(id)));
   state.queues[currentUserId] = [...queue];
 
-  const queuedPlayers = [...queue].map((id) => roster.find((player) => player.id === id)).filter(Boolean);
+  const queuedPlayers = [...queue].map((id) => roster.find((player) => player.id === id)).filter((player) => player && isDraftEligible(player));
 
   panel.innerHTML = `
     ${rosterUpdateMessage || state.rosterUpdatedAt ? `<div class="roster-update-note">
@@ -461,7 +462,7 @@ function renderQueue() {
         <div class="toolbar">
           <div><label for="searchPlayers">Search</label><input id="searchPlayers" value="${escapeHtml(state.filters.search)}" placeholder="Player or country"></div>
           <div><label for="teamFilter">Team</label><select id="teamFilter">${teams.map((team) => `<option ${team === state.filters.team ? "selected" : ""}>${team}</option>`).join("")}</select></div>
-          <div><label for="positionFilter">Position</label><select id="positionFilter">${["All", "GK", "DEF", "MID", "FWD"].map((position) => `<option ${position === state.filters.position ? "selected" : ""}>${position}</option>`).join("")}</select></div>
+          <div><label for="positionFilter">Position</label><select id="positionFilter">${["All", "DEF", "MID", "FWD"].map((position) => `<option ${position === state.filters.position ? "selected" : ""}>${position}</option>`).join("")}</select></div>
           <div>
             <label for="hideDraftedToggle">Hide Drafted</label>
             <label class="switch-control">
@@ -527,6 +528,7 @@ function filteredPlayers() {
   const drafted = draftedMap();
   const term = state.filters.search.trim().toLowerCase();
   return roster.filter((player) => {
+    if (!isDraftEligible(player)) return false;
     const isDrafted = drafted.has(player.id);
     if (isDrafted && state.filters.hideDrafted) return false;
     if (!isDrafted && !isTeamAlive(player.team)) return false;
@@ -534,6 +536,10 @@ function filteredPlayers() {
     if (state.filters.position !== "All" && player.position !== state.filters.position) return false;
     return !term || player.name.toLowerCase().includes(term) || player.team.toLowerCase().includes(term);
   }).sort(compareQueuePlayers);
+}
+
+function isDraftEligible(player) {
+  return player.position !== "GK";
 }
 
 async function updateOfficialRosters() {
