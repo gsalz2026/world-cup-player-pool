@@ -84,7 +84,6 @@ const GAME_COLUMNS = [
 
 let roster = [];
 let rosterUpdateMessage = "";
-let searchRenderTimer = null;
 let state = loadState();
 
 function generateRoster() {
@@ -439,7 +438,7 @@ function renderDraftBoard() {
   panel.innerHTML = html;
 }
 
-function renderQueue(options = {}) {
+function renderQueue() {
   const panel = document.getElementById("queue");
   if (state.filters.position === "GK") state.filters.position = "All";
   const teams = ["All", ...TEAMS.map(([, team]) => team).sort((a, b) => a.localeCompare(b))];
@@ -483,21 +482,8 @@ function renderQueue(options = {}) {
               <th><button class="sort-header" data-sort-queue="position">Pos ${sortMark("position")}</button></th>
               <th>Status</th><th></th>
             </tr></thead>
-            <tbody>
-              ${filtered.map((player) => {
-                const pick = drafted.get(player.id);
-                const queued = queue.has(player.id);
-                return `<tr>
-                  <td><strong>${escapeHtml(player.name)}</strong><div class="tiny">${escapeHtml(player.source || "imported roster")}</div></td>
-                  <td>${escapeHtml(player.team)} <span class="tiny">Group ${player.group}</span></td>
-                  <td><span class="badge">${player.position}</span></td>
-                  <td><span class="badge ${pick ? "" : "alive"}">${pick ? "Drafted" : "Available"}</span></td>
-                  <td class="row-actions">
-                    <button data-queue="${player.id}" ${pick || !isTeamAlive(player.team) ? "disabled" : ""}>${queued ? "Queued" : "Queue"}</button>
-                    <button class="primary" data-draft="${player.id}" ${pick || !current || !isTeamAlive(player.team) || !state.draftOrderLocked ? "disabled" : ""}>Draft</button>
-                  </td>
-                </tr>`;
-              }).join("")}
+            <tbody id="queuePlayerRows">
+              ${queueRowsHtml(filtered, drafted, queue, current)}
             </tbody>
           </table>
         </div>
@@ -523,13 +509,31 @@ function renderQueue(options = {}) {
       </aside>
     </div>
   `;
-  if (options.restoreSearchFocus) {
-    const search = document.getElementById("searchPlayers");
-    if (search) {
-      search.focus();
-      search.setSelectionRange(search.value.length, search.value.length);
-    }
-  }
+}
+
+function renderQueueRowsOnly() {
+  const rows = document.getElementById("queuePlayerRows");
+  if (!rows) return;
+  const drafted = draftedMap();
+  const queue = new Set(state.queues[state.currentUserId] || []);
+  rows.innerHTML = queueRowsHtml(filteredPlayers(), drafted, queue, currentPickInfo());
+}
+
+function queueRowsHtml(players, drafted, queue, current) {
+  return players.map((player) => {
+    const pick = drafted.get(player.id);
+    const queued = queue.has(player.id);
+    return `<tr>
+      <td><strong>${escapeHtml(player.name)}</strong><div class="tiny">${escapeHtml(player.source || "imported roster")}</div></td>
+      <td>${escapeHtml(player.team)} <span class="tiny">Group ${player.group}</span></td>
+      <td><span class="badge">${player.position}</span></td>
+      <td><span class="badge ${pick ? "" : "alive"}">${pick ? "Drafted" : "Available"}</span></td>
+      <td class="row-actions">
+        <button data-queue="${player.id}" ${pick || !isTeamAlive(player.team) ? "disabled" : ""}>${queued ? "Queued" : "Queue"}</button>
+        <button class="primary" data-draft="${player.id}" ${pick || !current || !isTeamAlive(player.team) || !state.draftOrderLocked ? "disabled" : ""}>Draft</button>
+      </td>
+    </tr>`;
+  }).join("");
 }
 
 function filteredPlayers() {
@@ -1104,12 +1108,8 @@ document.addEventListener("input", (event) => {
   }
   if (event.target.id === "searchPlayers") {
     state.filters.search = event.target.value;
+    renderQueueRowsOnly();
     saveState();
-    window.clearTimeout(searchRenderTimer);
-    searchRenderTimer = window.setTimeout(() => {
-      renderQueue({ restoreSearchFocus: true });
-      saveState();
-    }, 180);
   }
 });
 
