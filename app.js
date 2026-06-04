@@ -48,6 +48,7 @@ const KNOWN_PLAYERS = {
 
 const POSITION_PATTERN = ["GK", "GK", "GK", "DEF", "DEF", "DEF", "DEF", "DEF", "MID", "MID", "MID", "MID", "MID", "MID", "FWD", "FWD", "FWD", "FWD", "DEF", "MID", "FWD", "DEF", "MID", "FWD", "DEF", "MID"];
 const STORAGE_KEY = "worldCupPlayerPool.v1";
+const SHARED_STATE_ENDPOINT = "/api/state";
 const OFFICIAL_ROSTER_UNLOCK_DATE = "2026-06-01";
 const OFFICIAL_ROSTER_SOURCE = "https://en.wikipedia.org/w/api.php?action=parse&page=2026_FIFA_World_Cup_squads&prop=text&format=json&origin=*";
 const TEAM_NAME_ALIASES = {
@@ -84,6 +85,8 @@ const GAME_COLUMNS = [
 
 let roster = [];
 let rosterUpdateMessage = "";
+let sharedStateReady = false;
+let sharedSaveTimer = null;
 let state = loadState();
 
 function generateRoster() {
@@ -182,6 +185,73 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function sharedStateSnapshot() {
+  return {
+    participants: state.participants,
+    participantsLocked: state.participantsLocked,
+    draftOrder: state.draftOrder,
+    draftOrderLocked: state.draftOrderLocked,
+    picks: state.picks,
+    queues: state.queues,
+    stats: state.stats,
+    teamStatus: state.teamStatus,
+    customRoster: state.customRoster,
+    rosterUpdatedAt: state.rosterUpdatedAt
+  };
+}
+
+async function loadSharedState() {
+  try {
+    const response = await fetch(SHARED_STATE_ENDPOINT, { cache: "no-store" });
+    if (!response.ok) return false;
+    const payload = await response.json();
+    if (!payload?.state) {
+      sharedStateReady = true;
+      saveSharedState();
+      return true;
+    }
+    const localOnly = {
+      loggedInUserId: state.loggedInUserId,
+      currentUserId: state.currentUserId,
+      activeTab: state.activeTab,
+      scoringTeam: state.scoringTeam,
+      queueSort: state.queueSort,
+      viewMode: state.viewMode,
+      filters: state.filters
+    };
+    state = {
+      ...defaultState(),
+      ...payload.state,
+      ...localOnly,
+      filters: { ...defaultState().filters, ...(localOnly.filters || {}) }
+    };
+    ensureLeagueParticipants(state);
+    const participantIds = state.participants.map((participant) => participant.id);
+    state.draftOrder = normalizeDraftOrder(state.draftOrder, participantIds);
+    if (state.loggedInUserId && !participantIds.includes(state.loggedInUserId)) state.loggedInUserId = null;
+    if (!participantIds.includes(state.currentUserId)) state.currentUserId = state.loggedInUserId || participantIds[0] || "p1";
+    if (Array.isArray(state.customRoster) && state.customRoster.length) roster = state.customRoster;
+    sharedStateReady = true;
+    saveState();
+    return true;
+  } catch (error) {
+    sharedStateReady = false;
+    return false;
+  }
+}
+
+function saveSharedState() {
+  if (!sharedStateReady) return;
+  window.clearTimeout(sharedSaveTimer);
+  sharedSaveTimer = window.setTimeout(() => {
+    fetch(SHARED_STATE_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ state: sharedStateSnapshot() })
+    }).catch(() => {});
+  }, 250);
 }
 
 function ensureLeagueParticipants(targetState) {
@@ -286,6 +356,7 @@ function setGameStat(playerId, gameId, key, value) {
       }
     }
   };
+  saveSharedState();
 }
 
 function isTeamAlive(team) {
@@ -394,6 +465,7 @@ function setParticipantCount(count) {
   state.draftOrder = state.participants.map((participant) => participant.id);
   state.draftOrderLocked = false;
   state.picks = [];
+  saveSharedState();
   render();
 }
 
@@ -586,6 +658,7 @@ async function updateOfficialRosters() {
     state.rosterUpdatedAt = new Date().toISOString();
     roster = players;
     rosterUpdateMessage = `Updated ${players.length} players from the official roster source.`;
+    saveSharedState();
     render();
   } catch (error) {
     rosterUpdateMessage = `Roster update failed: ${error.message}`;
@@ -968,7 +1041,7 @@ function draftPlayer(playerId) {
     return;
   }
   if (!info || draftedMap().has(playerId)) return;
-  state.picks.push({
+    state.picks.push({
     pickNumber: info.pickIndex + 1,
     round: info.round,
     participantId: info.participant.id,
@@ -977,6 +1050,7 @@ function draftPlayer(playerId) {
   Object.keys(state.queues).forEach((participantId) => {
     state.queues[participantId] = (state.queues[participantId] || []).filter((id) => id !== playerId);
   });
+  saveSharedState();
   render();
 }
 
@@ -984,6 +1058,7 @@ function lockParticipants() {
   if (state.picks.length) return;
   state.participantsLocked = true;
   state.draftOrder = normalizeDraftOrder(state.draftOrder, state.participants.map((participant) => participant.id));
+  saveSharedState();
   render();
 }
 
@@ -995,6 +1070,7 @@ function randomizeDraftOrder() {
     [ids[index], ids[swapIndex]] = [ids[swapIndex], ids[index]];
   }
   state.draftOrder = ids;
+  saveSharedState();
   render();
 }
 
@@ -1002,6 +1078,7 @@ function lockDraftOrder() {
   if (!state.participantsLocked || state.picks.length) return;
   state.draftOrder = normalizeDraftOrder(state.draftOrder, state.participants.map((participant) => participant.id));
   state.draftOrderLocked = true;
+  saveSharedState();
   render();
 }
 
@@ -1015,6 +1092,7 @@ function animateDraftButton(button, playerId) {
 function resetLastPick() {
   if (!state.picks.length) return;
   state.picks.pop();
+  saveSharedState();
   render();
 }
 
@@ -1031,6 +1109,7 @@ function resetEntireDraft() {
   state.scoringTeam = TEAMS[0][1];
   state.loggedInUserId = currentLogin;
   state.currentUserId = currentUser;
+  saveSharedState();
   render();
 }
 
@@ -1074,6 +1153,7 @@ document.addEventListener("click", (event) => {
     const team = teamStatusToggle.dataset.toggleTeamStatus;
     state.teamStatus[team] = isTeamAlive(team) ? "Eliminated" : "Alive";
     state.scoringTeam = team;
+    saveSharedState();
     render();
   }
   const queueButton = event.target.closest("[data-queue]");
@@ -1081,11 +1161,13 @@ document.addEventListener("click", (event) => {
     const list = new Set(state.queues[state.currentUserId] || []);
     list.has(queueButton.dataset.queue) ? list.delete(queueButton.dataset.queue) : list.add(queueButton.dataset.queue);
     state.queues[state.currentUserId] = [...list];
+    saveSharedState();
     render();
   }
   const removeQueueButton = event.target.closest("[data-remove-queue]");
   if (removeQueueButton) {
     state.queues[state.currentUserId] = (state.queues[state.currentUserId] || []).filter((id) => id !== removeQueueButton.dataset.removeQueue);
+    saveSharedState();
     render();
   }
   if (event.target.id === "changeUserBtn") {
@@ -1105,6 +1187,7 @@ document.addEventListener("input", (event) => {
     const participant = state.participants.find((item) => item.id === event.target.dataset.participantName);
     if (participant) participant.name = event.target.value;
     saveState();
+    saveSharedState();
   }
   if (event.target.id === "searchPlayers") {
     state.filters.search = event.target.value;
@@ -1120,7 +1203,10 @@ document.addEventListener("change", (event) => {
   if (event.target.id === "viewModeToggle") state.viewMode = event.target.checked ? "mobile" : "desktop";
   if (event.target.matches("[data-toggle-drafted]")) state.filters.hideDrafted = event.target.checked;
   if (event.target.id === "scoringTeam") state.scoringTeam = event.target.value;
-  if (event.target.matches("[data-team-status]")) state.teamStatus[event.target.dataset.teamStatus] = event.target.value;
+  if (event.target.matches("[data-team-status]")) {
+    state.teamStatus[event.target.dataset.teamStatus] = event.target.value;
+    saveSharedState();
+  }
   if (event.target.matches("[data-stat]")) {
     const [id, gameId, key] = event.target.dataset.stat.split(":");
     setGameStat(id, gameId, key, event.target.value);
@@ -1149,4 +1235,7 @@ document.addEventListener("click", (event) => {
   if (event.target.id === "updateRostersBtn" && isAdminUser()) updateOfficialRosters();
 });
 
-initializeRoster().then(render);
+initializeRoster().then(async () => {
+  await loadSharedState();
+  render();
+});
