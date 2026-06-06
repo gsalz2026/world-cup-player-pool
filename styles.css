@@ -451,8 +451,36 @@ select {
 .participant-inputs input {
   min-height: 38px;
   padding: 0.45rem 0.5rem;
-  border-color: #d5dfd9;
-  background: white;
+  border-color: #a8d8bd;
+  background: #e2f5e9;
+  color: #17392b;
+}
+
+.participant-inputs .logged-in-participant label {
+  color: #8e1f2b;
+  font-weight: 900;
+}
+
+.participant-inputs .logged-in-participant input {
+  border-color: #df7180;
+  background: #ffe1e6;
+  color: #6f1623;
+  font-weight: 900;
+}
+
+.participant-inputs input:disabled {
+  opacity: 1;
+}
+
+.draft-permission-note {
+  margin: 0 0 0.75rem;
+  border: 1px solid #f0c46c;
+  border-radius: 8px;
+  background: #fff7df;
+  color: #6b5018;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 800;
 }
 
 .setup-actions {

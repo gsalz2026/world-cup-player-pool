@@ -364,7 +364,23 @@ function isTeamAlive(team) {
 }
 
 function isAdminUser() {
-  return nameForParticipant(state.loggedInUserId || state.currentUserId) === "Glenn Salzman";
+  return nameForParticipant(state.loggedInUserId) === "Glenn Salzman";
+}
+
+function canDraftCurrentPick() {
+  const info = currentPickInfo();
+  if (!info || !state.draftOrderLocked) return false;
+  if (isAdminUser()) return true;
+  return state.loggedInUserId === info.participant.id;
+}
+
+function draftPermissionMessage() {
+  const info = currentPickInfo();
+  if (!state.draftOrderLocked) return "Lock the draft order before drafting players.";
+  if (!info) return "The draft is complete.";
+  if (!state.loggedInUserId) return `Sign in as ${info.participant.name} to make this pick.`;
+  if (isAdminUser()) return "";
+  return state.loggedInUserId === info.participant.id ? "" : `Only ${info.participant.name} can make this pick.`;
 }
 
 function render() {
@@ -445,8 +461,8 @@ function renderParticipantSetup() {
   document.getElementById("resetDraftBtn").hidden = !isAdminUser();
 
   document.getElementById("participantInputs").innerHTML = state.participants.map((participant, index) => `
-    <div>
-      <label for="participant-${participant.id}">Team ${index + 1}</label>
+    <div class="${state.loggedInUserId === participant.id ? "logged-in-participant" : ""}">
+      <label for="participant-${participant.id}">${state.loggedInUserId === participant.id ? "Logged in" : `Team ${index + 1}`}</label>
       <input id="participant-${participant.id}" data-participant-name="${participant.id}" value="${escapeHtml(participant.name)}" ${state.participantsLocked || state.picks.length > 0 ? "disabled" : ""}>
     </div>
   `).join("");
@@ -517,6 +533,8 @@ function renderQueue() {
   const filtered = filteredPlayers();
   const drafted = draftedMap();
   const current = currentPickInfo();
+  const canDraft = canDraftCurrentPick();
+  const permissionMessage = draftPermissionMessage();
   const currentUserId = state.currentUserId;
   const availablePlayerIds = new Set(roster.filter((player) => isDraftEligible(player) && !drafted.has(player.id) && isTeamAlive(player.team)).map((player) => player.id));
   const queue = new Set((state.queues[currentUserId] || []).filter((id) => availablePlayerIds.has(id)));
@@ -546,6 +564,7 @@ function renderQueue() {
         </div>
           <div class="private-queue-note"><span class="tiny">Queue is private to the signed-in user.</span></div>
         </div>
+        ${permissionMessage && state.draftOrderLocked ? `<div class="draft-permission-note">${escapeHtml(permissionMessage)}</div>` : ""}
         <div class="table-shell">
           <table>
             <thead><tr>
@@ -574,7 +593,7 @@ function renderQueue() {
             <div class="tiny">${escapeHtml(player.team)} · ${player.position}</div>
           </div>
           <div class="queued-actions">
-            <button class="primary" data-draft="${player.id}" ${!current || !state.draftOrderLocked ? "disabled" : ""}>Draft</button>
+            <button class="primary" data-draft="${player.id}" ${!current || !state.draftOrderLocked || !canDraft ? "disabled" : ""}>Draft</button>
             <button data-remove-queue="${player.id}">Remove</button>
           </div>
         </div>`).join("") : `<div class="empty-state compact"><strong>No queued players.</strong><span>Use Queue from the table to add targets.</span></div>`}
@@ -592,6 +611,7 @@ function renderQueueRowsOnly() {
 }
 
 function queueRowsHtml(players, drafted, queue, current) {
+  const canDraft = canDraftCurrentPick();
   return players.map((player) => {
     const pick = drafted.get(player.id);
     const queued = queue.has(player.id);
@@ -602,7 +622,7 @@ function queueRowsHtml(players, drafted, queue, current) {
       <td><span class="badge ${pick ? "" : "alive"}">${pick ? "Drafted" : "Available"}</span></td>
       <td class="row-actions">
         <button data-queue="${player.id}" ${pick || !isTeamAlive(player.team) ? "disabled" : ""}>${queued ? "Queued" : "Queue"}</button>
-        <button class="primary" data-draft="${player.id}" ${pick || !current || !isTeamAlive(player.team) || !state.draftOrderLocked ? "disabled" : ""}>Draft</button>
+        <button class="primary" data-draft="${player.id}" ${pick || !current || !isTeamAlive(player.team) || !state.draftOrderLocked || !canDraft ? "disabled" : ""}>Draft</button>
       </td>
     </tr>`;
   }).join("");
@@ -956,6 +976,8 @@ function renderRules() {
           <li>Each participant drafts 10 players.</li>
           <li>Before drafting begins, the participants are locked, the draft order is randomized, and then the draft order is locked.</li>
           <li>The draft is a snake draft, so the order reverses every round.</li>
+          <li>Only the participant on the clock can make the current pick.</li>
+          <li>Glenn Salzman can enter or reset picks as commissioner.</li>
         </ul>
       </section>
 
@@ -1026,7 +1048,7 @@ function renderRules() {
         <h3>Commissioner Controls</h3>
         <ul class="rules-list">
           <li>Glenn Salzman is the commissioner/admin user.</li>
-          <li>Only the commissioner can reset the draft.</li>
+          <li>Only the commissioner can make picks for another participant or reset the draft.</li>
           <li>Only the commissioner can use Update World Cup Rosters after official rosters are available.</li>
         </ul>
       </section>
@@ -1038,6 +1060,10 @@ function draftPlayer(playerId) {
   const info = currentPickInfo();
   if (!state.draftOrderLocked) {
     alert("Lock the draft order before drafting players.");
+    return;
+  }
+  if (!canDraftCurrentPick()) {
+    alert(draftPermissionMessage());
     return;
   }
   if (!info || draftedMap().has(playerId)) return;
@@ -1090,6 +1116,7 @@ function animateDraftButton(button, playerId) {
 }
 
 function resetLastPick() {
+  if (!isAdminUser()) return;
   if (!state.picks.length) return;
   state.picks.pop();
   saveSharedState();
@@ -1097,6 +1124,7 @@ function resetLastPick() {
 }
 
 function resetEntireDraft() {
+  if (!isAdminUser()) return;
   const currentLogin = state.loggedInUserId;
   const currentUser = state.currentUserId;
   state.picks = [];
