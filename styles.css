@@ -81,6 +81,23 @@ body.login-mode main {
   background: rgba(255, 255, 255, 0.24);
 }
 
+.login-participant-buttons button.participant-online {
+  border-color: #ff9aaa;
+  background: rgba(255, 225, 230, 0.92);
+  color: #6f1623;
+  font-weight: 900;
+}
+
+.login-participant-buttons button.participant-online span {
+  display: block;
+  width: 100%;
+  margin-bottom: 0.1rem;
+  color: #9a2231;
+  font-size: 0.68rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
 .login-panel button {
   width: 100%;
 }

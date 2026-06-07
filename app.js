@@ -51,6 +51,9 @@ const STORAGE_KEY = "worldCupPlayerPool.v1";
 const SHARED_STATE_ENDPOINT = "/api/state";
 const OFFICIAL_ROSTER_UNLOCK_DATE = "2026-06-01";
 const OFFICIAL_ROSTER_SOURCE = "https://en.wikipedia.org/w/api.php?action=parse&page=2026_FIFA_World_Cup_squads&prop=text&format=json&origin=*";
+const ACTIVE_LOGIN_TIMEOUT_MS = 2 * 60 * 1000;
+const ACTIVE_LOGIN_HEARTBEAT_MS = 30 * 1000;
+const SHARED_STATE_REFRESH_MS = 10 * 1000;
 const TEAM_NAME_ALIASES = {
   "bosnia and herzegovina": "Bosnia",
   "côte d'ivoire": "Ivory Coast",
@@ -87,6 +90,8 @@ let roster = [];
 let rosterUpdateMessage = "";
 let sharedStateReady = false;
 let sharedSaveTimer = null;
+let activeLoginTimer = null;
+let sharedRefreshTimer = null;
 let state = loadState();
 
 function generateRoster() {
@@ -148,6 +153,7 @@ function defaultState() {
     teamStatus: Object.fromEntries(TEAMS.map(([, team]) => [team, "Alive"])),
     customRoster: null,
     rosterUpdatedAt: "",
+    activeLogins: {},
     loggedInUserId: null,
     activeTab: "draft",
     currentUserId: "p1",
@@ -171,6 +177,7 @@ function loadState() {
     if (!merged.currentUserId && saved?.queueManager) merged.currentUserId = saved.queueManager;
     const participantIds = merged.participants.map((participant) => participant.id);
     merged.draftOrder = normalizeDraftOrder(merged.draftOrder, participantIds);
+    pruneActiveLogins(merged);
     if (merged.loggedInUserId && !participantIds.includes(merged.loggedInUserId)) merged.loggedInUserId = null;
     if (!participantIds.includes(merged.currentUserId)) merged.currentUserId = merged.loggedInUserId || participantIds[0] || "p1";
     if (!saved?.draftOrder && merged.picks.length) {
@@ -187,7 +194,38 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+function pruneActiveLogins(targetState = state) {
+  const participantIds = new Set((targetState.participants || []).map((participant) => participant.id));
+  const cutoff = Date.now() - ACTIVE_LOGIN_TIMEOUT_MS;
+  targetState.activeLogins = Object.fromEntries(Object.entries(targetState.activeLogins || {}).filter(([participantId, timestamp]) => {
+    return participantIds.has(participantId) && Date.parse(timestamp) >= cutoff;
+  }));
+}
+
+function isParticipantLoggedIn(participantId) {
+  const timestamp = state.activeLogins?.[participantId];
+  return Boolean(timestamp && Date.parse(timestamp) >= Date.now() - ACTIVE_LOGIN_TIMEOUT_MS);
+}
+
+function touchActiveLogin(participantId, shouldSave = true) {
+  if (!participantId) return;
+  pruneActiveLogins();
+  state.activeLogins = {
+    ...(state.activeLogins || {}),
+    [participantId]: new Date().toISOString()
+  };
+  if (shouldSave) saveSharedState();
+}
+
+function clearActiveLogin(participantId) {
+  if (!participantId) return;
+  state.activeLogins = { ...(state.activeLogins || {}) };
+  delete state.activeLogins[participantId];
+  saveSharedState();
+}
+
 function sharedStateSnapshot() {
+  pruneActiveLogins();
   return {
     participants: state.participants,
     participantsLocked: state.participantsLocked,
@@ -198,7 +236,8 @@ function sharedStateSnapshot() {
     stats: state.stats,
     teamStatus: state.teamStatus,
     customRoster: state.customRoster,
-    rosterUpdatedAt: state.rosterUpdatedAt
+    rosterUpdatedAt: state.rosterUpdatedAt,
+    activeLogins: state.activeLogins
   };
 }
 
@@ -230,6 +269,7 @@ async function loadSharedState() {
     ensureLeagueParticipants(state);
     const participantIds = state.participants.map((participant) => participant.id);
     state.draftOrder = normalizeDraftOrder(state.draftOrder, participantIds);
+    pruneActiveLogins(state);
     if (state.loggedInUserId && !participantIds.includes(state.loggedInUserId)) state.loggedInUserId = null;
     if (!participantIds.includes(state.currentUserId)) state.currentUserId = state.loggedInUserId || participantIds[0] || "p1";
     if (Array.isArray(state.customRoster) && state.customRoster.length) roster = state.customRoster;
@@ -384,6 +424,8 @@ function draftPermissionMessage() {
 }
 
 function render() {
+  pruneActiveLogins();
+  if (state.loggedInUserId) touchActiveLogin(state.loggedInUserId, false);
   saveState();
   document.body.classList.toggle("admin-user", isAdminUser());
   renderViewMode();
@@ -413,7 +455,10 @@ function renderLogin() {
   document.body.classList.toggle("login-mode", !loggedIn);
   const loginParticipants = state.participants.filter((participant) => participant.name.trim());
   document.getElementById("loginParticipantButtons").innerHTML = loginParticipants.map((participant) => `
-    <button type="button" data-login-participant="${participant.id}">${escapeHtml(participant.name)}</button>
+    <button type="button" class="${isParticipantLoggedIn(participant.id) ? "participant-online" : ""}" data-login-participant="${participant.id}">
+      ${isParticipantLoggedIn(participant.id) ? `<span>Logged in</span>` : ""}
+      ${escapeHtml(participant.name)}
+    </button>
   `).join("");
 }
 
@@ -461,8 +506,8 @@ function renderParticipantSetup() {
   document.getElementById("resetDraftBtn").hidden = !isAdminUser();
 
   document.getElementById("participantInputs").innerHTML = state.participants.map((participant, index) => `
-    <div class="${state.loggedInUserId === participant.id ? "logged-in-participant" : ""}">
-      <label for="participant-${participant.id}">${state.loggedInUserId === participant.id ? "Logged in" : `Team ${index + 1}`}</label>
+    <div class="${isParticipantLoggedIn(participant.id) ? "logged-in-participant" : ""}">
+      <label for="participant-${participant.id}">${isParticipantLoggedIn(participant.id) ? "Logged in" : `Team ${index + 1}`}</label>
       <input id="participant-${participant.id}" data-participant-name="${participant.id}" value="${escapeHtml(participant.name)}" ${state.participantsLocked || state.picks.length > 0 ? "disabled" : ""}>
     </div>
   `).join("");
@@ -1199,13 +1244,17 @@ document.addEventListener("click", (event) => {
     render();
   }
   if (event.target.id === "changeUserBtn") {
+    const previousLogin = state.loggedInUserId;
     state.loggedInUserId = null;
+    clearActiveLogin(previousLogin);
     render();
   }
   const loginParticipantButton = event.target.closest("[data-login-participant]");
   if (loginParticipantButton) {
+    if (state.loggedInUserId && state.loggedInUserId !== loginParticipantButton.dataset.loginParticipant) clearActiveLogin(state.loggedInUserId);
     state.loggedInUserId = loginParticipantButton.dataset.loginParticipant;
     state.currentUserId = state.loggedInUserId;
+    touchActiveLogin(state.loggedInUserId);
     render();
   }
 });
@@ -1263,7 +1312,27 @@ document.addEventListener("click", (event) => {
   if (event.target.id === "updateRostersBtn" && isAdminUser()) updateOfficialRosters();
 });
 
+async function refreshSharedState() {
+  const activeElement = document.activeElement;
+  if (activeElement?.matches?.("input, textarea, select")) return;
+  const loaded = await loadSharedState();
+  if (!loaded) return;
+  if (state.loggedInUserId) touchActiveLogin(state.loggedInUserId);
+  render();
+}
+
+function startLoginPresence() {
+  window.clearInterval(activeLoginTimer);
+  window.clearInterval(sharedRefreshTimer);
+  activeLoginTimer = window.setInterval(() => {
+    if (state.loggedInUserId) touchActiveLogin(state.loggedInUserId);
+  }, ACTIVE_LOGIN_HEARTBEAT_MS);
+  sharedRefreshTimer = window.setInterval(refreshSharedState, SHARED_STATE_REFRESH_MS);
+}
+
 initializeRoster().then(async () => {
   await loadSharedState();
+  if (state.loggedInUserId) touchActiveLogin(state.loggedInUserId);
+  startLoginPresence();
   render();
 });
