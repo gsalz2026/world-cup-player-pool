@@ -225,6 +225,7 @@ function clearActiveLogin(participantId) {
 }
 
 function sharedStateSnapshot() {
+  ensureLeagueParticipants(state);
   pruneActiveLogins();
   return {
     participants: state.participants,
