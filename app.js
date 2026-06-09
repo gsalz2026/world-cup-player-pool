@@ -49,6 +49,7 @@ const KNOWN_PLAYERS = {
 const POSITION_PATTERN = ["GK", "GK", "GK", "DEF", "DEF", "DEF", "DEF", "DEF", "MID", "MID", "MID", "MID", "MID", "MID", "FWD", "FWD", "FWD", "FWD", "DEF", "MID", "FWD", "DEF", "MID", "FWD", "DEF", "MID"];
 const STORAGE_KEY = "worldCupPlayerPool.v1";
 const SHARED_STATE_ENDPOINT = "/api/state";
+const SCORE_UPDATE_ENDPOINT = "/api/update-scores";
 const OFFICIAL_ROSTER_UNLOCK_DATE = "2026-06-01";
 const OFFICIAL_ROSTER_SOURCE = "https://en.wikipedia.org/w/api.php?action=parse&page=2026_FIFA_World_Cup_squads&prop=text&format=json&origin=*";
 const ACTIVE_LOGIN_TIMEOUT_MS = 2 * 60 * 1000;
@@ -88,6 +89,7 @@ const GAME_COLUMNS = [
 
 let roster = [];
 let rosterUpdateMessage = "";
+let scoreUpdateMessage = "";
 let sharedStateReady = false;
 let sharedSaveTimer = null;
 let activeLoginTimer = null;
@@ -732,6 +734,32 @@ async function updateOfficialRosters() {
   }
 }
 
+async function updateScoresFromProvider() {
+  if (!isAdminUser()) return;
+  scoreUpdateMessage = "Updating scores...";
+  renderTeams();
+  try {
+    const response = await fetch(SCORE_UPDATE_ENDPOINT, { method: "POST" });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "Score update failed.");
+
+    if (payload.state) {
+      state = {
+        ...state,
+        stats: payload.state.stats || state.stats,
+        teamStatus: payload.state.teamStatus || state.teamStatus
+      };
+      saveState();
+      saveSharedState();
+    }
+
+    scoreUpdateMessage = payload.message || `Scores updated. ${payload.updatedPlayers || 0} player rows changed.`;
+  } catch (error) {
+    scoreUpdateMessage = `Score update failed: ${error.message}`;
+  }
+  render();
+}
+
 function parseOfficialRosterHtml(html) {
   if (!html) return [];
   const doc = new DOMParser().parseFromString(html, "text/html");
@@ -850,7 +878,11 @@ function renderTeams() {
           ${draftedTeams.map(([, team]) => `<option value="${escapeHtml(team)}" ${team === selectedTeam ? "selected" : ""}>${escapeHtml(team)}</option>`).join("")}
         </select>
       </div>
-      <div class="tiny">Enter goals and assists by match. Points remain even after a team is knocked out.</div>
+      <div class="scoring-actions">
+        <div class="tiny">Enter goals and assists by match. Points remain even after a team is knocked out.</div>
+        ${isAdminUser() ? `<button id="updateScoresBtn" class="primary" type="button">Update Scores</button>` : ""}
+        ${scoreUpdateMessage ? `<div class="score-update-status">${escapeHtml(scoreUpdateMessage)}</div>` : ""}
+      </div>
     </div>
     <div class="team-summary-grid">
       ${draftedTeams.map(([group, team]) => {
@@ -1311,6 +1343,7 @@ document.getElementById("resetEntireDraftBtn").addEventListener("click", () => {
 });
 document.addEventListener("click", (event) => {
   if (event.target.id === "updateRostersBtn" && isAdminUser()) updateOfficialRosters();
+  if (event.target.id === "updateScoresBtn" && isAdminUser()) updateScoresFromProvider();
 });
 
 async function refreshSharedState() {

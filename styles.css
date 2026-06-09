@@ -1030,6 +1030,20 @@ th {
   margin-bottom: 1rem;
 }
 
+.scoring-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.score-update-status {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
 .team-summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
