@@ -70,7 +70,7 @@ const LEAGUE_PARTICIPANT_NAMES = [
   "Glenn Salzman",
   "Teddy Salzman",
   "Matt Jarvis",
-  "Oak Jarvis",
+  "Zella Jarvis",
   "Doyle Walton",
   "Beck Walton",
   "Scott Meyer"
