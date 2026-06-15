@@ -1,6 +1,7 @@
 import { neon } from "@neondatabase/serverless";
 
 const STATE_ID = "default";
+let tableReadyPromise = null;
 
 function json(res, status, payload) {
   res.statusCode = status;
@@ -26,13 +27,23 @@ async function ensureTable(sql) {
   `;
 }
 
+function ensureTableOnce(sql) {
+  if (!tableReadyPromise) {
+    tableReadyPromise = ensureTable(sql).catch((error) => {
+      tableReadyPromise = null;
+      throw error;
+    });
+  }
+  return tableReadyPromise;
+}
+
 export default async function handler(req, res) {
   if (!process.env.DATABASE_URL) {
     return json(res, 503, { error: "DATABASE_URL is not configured." });
   }
 
   const sql = neon(process.env.DATABASE_URL);
-  await ensureTable(sql);
+  await ensureTableOnce(sql);
 
   if (req.method === "GET") {
     const rows = await sql`SELECT state, updated_at FROM league_state WHERE id = ${STATE_ID}`;

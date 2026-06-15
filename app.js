@@ -50,11 +50,12 @@ const POSITION_PATTERN = ["GK", "GK", "GK", "DEF", "DEF", "DEF", "DEF", "DEF", "
 const STORAGE_KEY = "worldCupPlayerPool.v1";
 const SHARED_STATE_ENDPOINT = "/api/state";
 const SCORE_UPDATE_ENDPOINT = "/api/update-scores";
+const UPDATE_ACTIONS_ENABLED = false;
 const OFFICIAL_ROSTER_UNLOCK_DATE = "2026-06-01";
 const OFFICIAL_ROSTER_SOURCE = "https://en.wikipedia.org/w/api.php?action=parse&page=2026_FIFA_World_Cup_squads&prop=text&format=json&origin=*";
-const ACTIVE_LOGIN_TIMEOUT_MS = 2 * 60 * 1000;
-const ACTIVE_LOGIN_HEARTBEAT_MS = 30 * 1000;
-const SHARED_STATE_REFRESH_MS = 10 * 1000;
+const ACTIVE_LOGIN_TIMEOUT_MS = 6 * 60 * 1000;
+const ACTIVE_LOGIN_HEARTBEAT_MS = 2 * 60 * 1000;
+const SHARED_STATE_REFRESH_MS = 30 * 1000;
 const TEAM_NAME_ALIASES = {
   "bosnia and herzegovina": "Bosnia",
   "côte d'ivoire": "Ivory Coast",
@@ -94,6 +95,7 @@ let sharedStateReady = false;
 let sharedSaveTimer = null;
 let activeLoginTimer = null;
 let sharedRefreshTimer = null;
+let lastSharedSnapshotJson = "";
 let state = loadState();
 
 function generateRoster() {
@@ -244,6 +246,10 @@ function sharedStateSnapshot() {
   };
 }
 
+function rememberSharedSnapshot() {
+  lastSharedSnapshotJson = JSON.stringify(sharedStateSnapshot());
+}
+
 async function loadSharedState() {
   try {
     const response = await fetch(SHARED_STATE_ENDPOINT, { cache: "no-store" });
@@ -278,6 +284,7 @@ async function loadSharedState() {
     if (Array.isArray(state.customRoster) && state.customRoster.length) roster = state.customRoster;
     sharedStateReady = true;
     saveState();
+    rememberSharedSnapshot();
     return true;
   } catch (error) {
     sharedStateReady = false;
@@ -289,11 +296,17 @@ function saveSharedState() {
   if (!sharedStateReady) return;
   window.clearTimeout(sharedSaveTimer);
   sharedSaveTimer = window.setTimeout(() => {
+    const snapshot = sharedStateSnapshot();
+    const snapshotJson = JSON.stringify(snapshot);
+    if (snapshotJson === lastSharedSnapshotJson) return;
+    lastSharedSnapshotJson = snapshotJson;
     fetch(SHARED_STATE_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ state: sharedStateSnapshot() })
-    }).catch(() => {});
+      body: JSON.stringify({ state: snapshot })
+    }).catch(() => {
+      lastSharedSnapshotJson = "";
+    });
   }, 250);
 }
 
@@ -880,7 +893,7 @@ function renderTeams() {
       </div>
       <div class="scoring-actions">
         <div class="tiny">Enter goals and assists by match. Points remain even after a team is knocked out.</div>
-        ${isAdminUser() ? `<button id="updateScoresBtn" class="primary" type="button">Update Scores</button>` : ""}
+        ${isAdminUser() ? `<button id="updateScoresBtn" class="primary" type="button" ${UPDATE_ACTIONS_ENABLED ? "" : "disabled"} title="${UPDATE_ACTIONS_ENABLED ? "Update scores" : "Temporarily disabled"}">Update Scores</button>` : ""}
         ${scoreUpdateMessage ? `<div class="score-update-status">${escapeHtml(scoreUpdateMessage)}</div>` : ""}
       </div>
     </div>
@@ -1342,6 +1355,7 @@ document.getElementById("resetEntireDraftBtn").addEventListener("click", () => {
   resetEntireDraft();
 });
 document.addEventListener("click", (event) => {
+  if (!UPDATE_ACTIONS_ENABLED && (event.target.id === "updateRostersBtn" || event.target.id === "updateScoresBtn")) return;
   if (event.target.id === "updateRostersBtn" && isAdminUser()) updateOfficialRosters();
   if (event.target.id === "updateScoresBtn" && isAdminUser()) updateScoresFromProvider();
 });
@@ -1351,7 +1365,6 @@ async function refreshSharedState() {
   if (activeElement?.matches?.("input, textarea, select")) return;
   const loaded = await loadSharedState();
   if (!loaded) return;
-  if (state.loggedInUserId) touchActiveLogin(state.loggedInUserId);
   render();
 }
 
