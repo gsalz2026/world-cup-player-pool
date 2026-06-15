@@ -53,9 +53,9 @@ const SCORE_UPDATE_ENDPOINT = "/api/update-scores";
 const UPDATE_ACTIONS_ENABLED = false;
 const OFFICIAL_ROSTER_UNLOCK_DATE = "2026-06-01";
 const OFFICIAL_ROSTER_SOURCE = "https://en.wikipedia.org/w/api.php?action=parse&page=2026_FIFA_World_Cup_squads&prop=text&format=json&origin=*";
-const ACTIVE_LOGIN_TIMEOUT_MS = 6 * 60 * 1000;
-const ACTIVE_LOGIN_HEARTBEAT_MS = 2 * 60 * 1000;
-const SHARED_STATE_REFRESH_MS = 30 * 1000;
+const ACTIVE_LOGIN_TIMEOUT_MS = 2 * 60 * 60 * 1000;
+const ACTIVE_LOGIN_HEARTBEAT_MS = 60 * 60 * 1000;
+const SHARED_STATE_REFRESH_MS = 60 * 60 * 1000;
 const TEAM_NAME_ALIASES = {
   "bosnia and herzegovina": "Bosnia",
   "côte d'ivoire": "Ivory Coast",
@@ -1361,6 +1361,7 @@ document.addEventListener("click", (event) => {
 });
 
 async function refreshSharedState() {
+  if (document.hidden) return;
   const activeElement = document.activeElement;
   if (activeElement?.matches?.("input, textarea, select")) return;
   const loaded = await loadSharedState();
@@ -1368,18 +1369,31 @@ async function refreshSharedState() {
   render();
 }
 
-function startLoginPresence() {
+function stopSharedTimers() {
   window.clearInterval(activeLoginTimer);
   window.clearInterval(sharedRefreshTimer);
+}
+
+function startSharedTimers() {
+  stopSharedTimers();
+  if (document.hidden) return;
   activeLoginTimer = window.setInterval(() => {
     if (state.loggedInUserId) touchActiveLogin(state.loggedInUserId);
   }, ACTIVE_LOGIN_HEARTBEAT_MS);
   sharedRefreshTimer = window.setInterval(refreshSharedState, SHARED_STATE_REFRESH_MS);
 }
 
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    stopSharedTimers();
+    return;
+  }
+  startSharedTimers();
+});
+
 initializeRoster().then(async () => {
   await loadSharedState();
   if (state.loggedInUserId) touchActiveLogin(state.loggedInUserId);
-  startLoginPresence();
+  startSharedTimers();
   render();
 });
